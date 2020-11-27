@@ -38,35 +38,73 @@ class ActorCNN(nn.Module):
     def __init__(self, action_dim, max_action):
         super(ActorCNN, self).__init__()
 
+        def conv_bn(inp, oup, stride):
+            return nn.Sequential(
+                nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
+                nn.BatchNorm2d(oup),
+                nn.ReLU(inplace=True)
+            )
+        def conv_dw(inp, oup, stride):
+            return nn.Sequential(
+                nn.Conv2d(inp, inp, 3, stride, 1, groups=inp, bias=False),
+                nn.BatchNorm2d(inp),
+                nn.ReLU(inplace=True),
+    
+                nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
+                nn.BatchNorm2d(oup),
+                nn.ReLU(inplace=True),
+            )
+
         # ONLY TRU IN CASE OF DUCKIETOWN:
-        flat_size = 32 * 9 * 14
+        flat_size = 32 * 9 * 14 #need to change: this input dimension is no longer true
 
         self.lr = nn.LeakyReLU()
         self.tanh = nn.Tanh()
         self.sigm = nn.Sigmoid()
 
-        self.conv1 = nn.Conv2d(3, 32, 8, stride=2)
-        self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
+        # self.conv1 = nn.Conv2d(3, 32, 8, stride=2)
+        # self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
+        # self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
+        # self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
 
-        self.bn1 = nn.BatchNorm2d(32)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.bn3 = nn.BatchNorm2d(32)
-        self.bn4 = nn.BatchNorm2d(32)
+        # self.bn1 = nn.BatchNorm2d(32)
+        # self.bn2 = nn.BatchNorm2d(32)
+        # self.bn3 = nn.BatchNorm2d(32)
+        # self.bn4 = nn.BatchNorm2d(32)
 
-        self.dropout = nn.Dropout(.5)
+        # self.dropout = nn.Dropout(.5)
 
         self.lin1 = nn.Linear(flat_size, 512)
         self.lin2 = nn.Linear(512, action_dim)
+        
+        self.model = nn.Sequential(
+            conv_bn(  3,  32, 2), 
+            conv_dw( 32,  64, 1),
+            conv_dw( 64, 128, 2),
+            conv_dw(128, 128, 1),
+            conv_dw(128, 256, 2),
+            conv_dw(256, 256, 1),
+            conv_dw(256, 512, 2),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 1024, 2),
+            conv_dw(1024, 1024, 1),
+            nn.AvgPool2d(7), #need to change, as this assumes the last output was 7*7*1024.
+        )
+
+
 
         self.max_action = max_action
 
     def forward(self, x):
-        x = self.bn1(self.lr(self.conv1(x)))
-        x = self.bn2(self.lr(self.conv2(x)))
-        x = self.bn3(self.lr(self.conv3(x)))
-        x = self.bn4(self.lr(self.conv4(x)))
+        # x = self.bn1(self.lr(self.conv1(x)))
+        # x = self.bn2(self.lr(self.conv2(x)))
+        # x = self.bn3(self.lr(self.conv3(x)))
+        # x = self.bn4(self.lr(self.conv4(x)))
+        x = self.model(x)
         x = x.view(x.size(0), -1)  # flatten
         x = self.dropout(x)
         x = self.lr(self.lin1(x))
@@ -104,31 +142,69 @@ class CriticCNN(nn.Module):
     def __init__(self, action_dim):
         super(CriticCNN, self).__init__()
 
-        flat_size = 32 * 9 * 14
+        def conv_bn(inp, oup, stride):
+            return nn.Sequential(
+                nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
+                nn.BatchNorm2d(oup),
+                nn.ReLU(inplace=True)
+            )
+        def conv_dw(inp, oup, stride):
+            return nn.Sequential(
+                nn.Conv2d(inp, inp, 3, stride, 1, groups=inp, bias=False),
+                nn.BatchNorm2d(inp),
+                nn.ReLU(inplace=True),
+    
+                nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
+                nn.BatchNorm2d(oup),
+                nn.ReLU(inplace=True),
+            )
+
+        flat_size = 32 * 9 * 14 #need to change
 
         self.lr = nn.LeakyReLU()
 
-        self.conv1 = nn.Conv2d(3, 32, 8, stride=2)
-        self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
-        self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
+        # self.conv1 = nn.Conv2d(3, 32, 8, stride=2)
+        # self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
+        # self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
+        # self.conv4 = nn.Conv2d(32, 32, 4, stride=1)
 
-        self.bn1 = nn.BatchNorm2d(32)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.bn3 = nn.BatchNorm2d(32)
-        self.bn4 = nn.BatchNorm2d(32)
+        # self.bn1 = nn.BatchNorm2d(32)
+        # self.bn2 = nn.BatchNorm2d(32)
+        # self.bn3 = nn.BatchNorm2d(32)
+        # self.bn4 = nn.BatchNorm2d(32)
 
-        self.dropout = nn.Dropout(.5)
+        # self.dropout = nn.Dropout(.5)
 
         self.lin1 = nn.Linear(flat_size, 256)
         self.lin2 = nn.Linear(256 + action_dim, 128)
         self.lin3 = nn.Linear(128, 1)
 
+        self.model = nn.Sequential(
+            conv_bn(  3,  32, 2), 
+            conv_dw( 32,  64, 1),
+            conv_dw( 64, 128, 2),
+            conv_dw(128, 128, 1),
+            conv_dw(128, 256, 2),
+            conv_dw(256, 256, 1),
+            conv_dw(256, 512, 2),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 512, 1),
+            conv_dw(512, 1024, 2),
+            conv_dw(1024, 1024, 1),
+            nn.AvgPool2d(7), #need to change, as this assumes the last output was 7*7*1024.
+        )
+
+
+
     def forward(self, states, actions):
-        x = self.bn1(self.lr(self.conv1(states)))
-        x = self.bn2(self.lr(self.conv2(x)))
-        x = self.bn3(self.lr(self.conv3(x)))
-        x = self.bn4(self.lr(self.conv4(x)))
+        # x = self.bn1(self.lr(self.conv1(states)))
+        # x = self.bn2(self.lr(self.conv2(x)))
+        # x = self.bn3(self.lr(self.conv3(x)))
+        # x = self.bn4(self.lr(self.conv4(x)))
+        x = self.model(states)
         x = x.view(x.size(0), -1)  # flatten
         x = self.lr(self.lin1(x))
         x = self.lr(self.lin2(torch.cat([x, actions], 1)))  # c
